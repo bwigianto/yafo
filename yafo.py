@@ -1,49 +1,60 @@
 import os
-import shutil
+import argparse
 
+def merge(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
 
-def createDirs():
-    print('Current directory: ', os.getcwd())
-    presets = ['Documents', 'Rest', 'Images', 'Compressed', 'Programs', 'Music', 'Movies', 'Scripts']
-    presets.sort()
+def subfolders_loaded(dic):
+    def subfolder(file):
+        ext_to_folder = merge(dic, {
+         'pdf': 'Documents',
+         'docx': 'Documents',
+         'doc': 'Documents',
+         'epub': 'Documents',
     
-    # Creates directories based on user input and config
-    for i in range(len(presets)):
-        filename = os.getcwd() + '/' + presets[i]
-        os.mkdir(filename)
+         'png': 'Images',
+         'jpeg': 'Images',
     
-    return presets
+         'mp3': 'Music',
     
+         'zip': 'Compressed',
+         'tar': 'Compressed',
+    
+         'mp4': 'Movies',
+         'mkv': 'Movies',
+    
+         'deb': 'Programs',
+    
+         'sh': 'Scripts'
+        })
+        ext = os.path.splitext(file)[0]
+        if ext not in ext_to_folder:
+            return 'Rest'
+        return ext_to_folder[ext]
+    return subfolder
 
-def organize(presets):
-    for folder, subfolders, filenames in os.walk(os.getcwd()):
-        #print(os.path.basename(folder))
-#        if os.path.basename(folder) in presets:
-#            print("Outta here")
-#            continue
-
-        if os.path.basename(folder) != os.path.basename(os.getcwd()):
+def route(file, subfolder_mapper):
+    dest = os.path.join(os.path.dirname(file), subfolder_mapper(file), os.path.basename(file))
+    if not os.path.exists(os.path.dirname(dest)):
+        os.mkdir(os.path.dirname(dest))
+    os.rename(file, dest)
+   
+def discover(dir, subfolder_mapper):
+    print('Current directory: ', dir)
+    for folder, subfolders, filenames in os.walk(dir):
+        if os.path.basename(folder) != os.path.basename(dir):
             continue
-
-        for filename in filenames:
-            if filename.endswith('.pdf') or filename.endswith('.docx') or filename.endswith('.doc') or filename.endswith('.epub'):
-                shutil.move(filename, (os.getcwd() + '/Documents/' + filename))
-            elif filename.endswith('.png') or filename.endswith('.jpeg') or filename.endswith('jpeg'):
-                shutil.move(filename, (os.getcwd() + '/Images/' + filename))
-            elif filename.endswith('.mp3'):
-                shutil.move(filename, (os.getcwd() + '/Music/' + filename))
-            elif filename.endswith('.zip') or filename.endswith('.tar'):
-                shutil.move(filename, (os.getcwd() + '/Compressed/' + filename))
-            elif filename.endswith('.mp4') or filename.endswith('.mkv'):
-                shutil.move(filename, (os.getcwd() + '/Movies/' + filename))
-            elif filename.endswith('.deb'):
-                shutil.move(filename, (os.getcwd() + '/Programs/' + filename))
-            elif filename.endswith('.sh'):
-                shutil.move(filename, (os.getcwd() + '/Scripts/' + filename))
-            else:
-                shutil.move(filename, (os.getcwd() + '/Rest/' + filename))
+        for file in filenames:
+            route(file, subfolder_mapper)
 
 def main():
-    organize(createDirs())
+    parser = argparse.ArgumentParser(description='Organize files based on extension')
+    parser.add_argument("--tex", help="organize .tex files",
+                    action="store_true")
+    args = parser.parse_args()
+    subfolder_mapper = subfolders_loaded({}) if not args.tex else subfolders_loaded({'tex': 'TeX'})
+    discover(os.getcwd(), subfolder_mapper)
 
 main()
